@@ -1,0 +1,1 @@
+cmd_/home/legup/legup-4.0/pcie/riffa_driver/riffa.o := ld -m elf_x86_64   -r -o /home/legup/legup-4.0/pcie/riffa_driver/riffa.o /home/legup/legup-4.0/pcie/riffa_driver/riffa_driver.o /home/legup/legup-4.0/pcie/riffa_driver/circ_queue.o 

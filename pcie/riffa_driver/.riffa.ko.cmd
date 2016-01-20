@@ -1,0 +1,1 @@
+cmd_/home/legup/legup-4.0/pcie/riffa_driver/riffa.ko := ld -r -m elf_x86_64 -T ./scripts/module-common.lds --build-id  -o /home/legup/legup-4.0/pcie/riffa_driver/riffa.ko /home/legup/legup-4.0/pcie/riffa_driver/riffa.o /home/legup/legup-4.0/pcie/riffa_driver/riffa.mod.o
