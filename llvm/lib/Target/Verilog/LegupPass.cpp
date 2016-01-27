@@ -62,12 +62,12 @@ class FunctionSortingWrapper {
   private:
     unsigned sortNumber;
     Function *function;
-  };
+};
 
-  // Returns a set of functions ordered such that the   
-std::vector<Function*> LegupPass::getDepthFirstSortedFunctions(Module &M) {
-  // TODO: Use a more efficient algorithm for this.
-  size_t previousSetSize = 0;
+// Returns a set of functions ordered such that the
+std::vector<Function *> LegupPass::getDepthFirstSortedFunctions(Module &M) {
+    // TODO: Use a more efficient algorithm for this.
+    size_t previousSetSize = 0;
   std::vector<Function*> sortedSet;
   std::vector<std::string> addedFunctionNames;
   size_t addedFunctionCount = 0;
@@ -75,25 +75,25 @@ std::vector<Function*> LegupPass::getDepthFirstSortedFunctions(Module &M) {
     previousSetSize = sortedSet.size();
     for (Module::iterator f = M.begin(), FE = M.end(); f != FE; ++f) {
       Function &F = *f;
-			if (std::find(addedFunctionNames.begin(), addedFunctionNames.end(),
-					F.getName().str()) != addedFunctionNames.end())
-	continue;
+      if (std::find(addedFunctionNames.begin(), addedFunctionNames.end(),
+                    F.getName().str()) != addedFunctionNames.end())
+          continue;
       bool allCalledFunctionsAddedToSet = true;
-      
+
       for (Function::iterator b = F.begin(), be = F.end(); b != be; ++b) {
-	
-				for (BasicBlock::iterator instr = b->begin(), ie = b->end();
-						instr != ie; ++instr) {
-					if (isaDummyCall(instr))
-						continue;
-	  
-	  if (CallInst *CI = dyn_cast<CallInst>(instr)) {	
-	    llvm::Function *called = getCalledFunction(CI);
-						if (std::find(addedFunctionNames.begin(),
-								addedFunctionNames.end(),
-								called->getName().str())
-								== addedFunctionNames.end()) {
-	      allCalledFunctionsAddedToSet = false;
+
+          for (BasicBlock::iterator instr = b->begin(), ie = b->end();
+               instr != ie; ++instr) {
+              if (isaDummyCall(instr))
+                  continue;
+
+              if (CallInst *CI = dyn_cast<CallInst>(instr)) {
+                  llvm::Function *called = getCalledFunction(CI);
+                  if (std::find(addedFunctionNames.begin(),
+                                addedFunctionNames.end(),
+                                called->getName().str()) ==
+                      addedFunctionNames.end()) {
+          allCalledFunctionsAddedToSet = false;
 	      break;
 	    }
 	  }
@@ -227,13 +227,14 @@ bool LegupPass::runOnModule(Module &M) {
 					<< LEGUP_CONFIG->getParameterInt("GROUP_RAMS") << std::endl;
 			std::cout << "NO_ROMS: " << LEGUP_CONFIG->getParameterInt("NO_ROMS")
 					<< std::endl;
-			std::cout
-					<< "LegUp Configuration for Inspect-Debug mode is not correct."
-					<< " In order to run LegUp on Inspect-Debug mode set LOCAL_RAMS = 0; GROUP_RAMS = 0; and NO_ROMS = 1; in legup.tcl file"
-					<< std::endl;
+            std::cout
+                << "LegUp Configuration for Inspect-Debug mode is not correct."
+                << " In order to run LegUp on Inspect-Debug mode set "
+                   "LOCAL_RAMS = 0; GROUP_RAMS = 0; and NO_ROMS = 1; in "
+                   "legup.tcl file" << std::endl;
             exit(1);
         }
-        
+
         /*Timer timer;
         timer.init(StringRef("timer"));
         timer.startTimer();*/
@@ -260,12 +261,11 @@ bool LegupPass::runOnModule(Module &M) {
         DEBUG(errs() << "Entering function: " << F.getName() << "\n");
 
         // debugging: view a dot graph of function control flow graph:
-        //F->viewCFG();
-        
-        //NC changes
-		if (LEGUP_CONFIG->getParameterInt("INSPECT_DEBUG")
-				|| LEGUP_CONFIG->getParameterInt(
-						"INSPECT_ONCHIP_BUG_DETECT_DEBUG")) {
+        // F->viewCFG();
+
+        // NC changes
+        if (LEGUP_CONFIG->getParameterInt("INSPECT_DEBUG") ||
+            LEGUP_CONFIG->getParameterInt("INSPECT_ONCHIP_BUG_DETECT_DEBUG")) {
             dbger.fillDebugDB(&F);
         }
 
@@ -281,14 +281,15 @@ bool LegupPass::runOnModule(Module &M) {
 
         printBBStats(F);
     }
-    
-    allocation->addAA(&getAnalysis<AliasAnalysis>());	
-  	
-    // If software profiling was done in this compilation, read in the  
+
+    allocation->addAA(&getAnalysis<AliasAnalysis>());
+
+    // If software profiling was done in this compilation, read in the
     // llvmprof.out file and cache some info about the execution
-	// TODO LLVM 3.4 update.  profileInfo no longer exists.  commenting out for now.
-    //if (LEGUP_CONFIG->getParameterInt("LLVM_PROFILE")) {
-        //allocation->addPI(&getAnalysis<ProfileInfo>());
+    // TODO LLVM 3.4 update.  profileInfo no longer exists.  commenting out for
+    // now.
+    // if (LEGUP_CONFIG->getParameterInt("LLVM_PROFILE")) {
+    // allocation->addPI(&getAnalysis<ProfileInfo>());
     //}
 
     // Schedule the operations in each function
@@ -489,8 +490,8 @@ void LegupPass::printResourcesFile(std::string fileName) {
 // MinimizeBitwidth pass has been registered twice when running:
 //      opt -load=../../llvm/Debug+Asserts/lib/LLVMLegUp.so
 char MinimizeBitwidth::ID = 0;
-static RegisterPass<MinimizeBitwidth> X("legup-minimize-bitwidth",
-        "Pre-Link Time Optimization Pass to shrink integer bitwidth to arbritrary precision");
+static RegisterPass<MinimizeBitwidth>
+    X("legup-minimize-bitwidth", "Pre-Link Time Optimization Pass to shrink "
+                                 "integer bitwidth to arbritrary precision");
 
 } // End legup namespace
-

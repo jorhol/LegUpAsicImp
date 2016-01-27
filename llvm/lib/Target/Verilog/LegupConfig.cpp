@@ -23,7 +23,7 @@ static LegupConfig LegupConfigObj;
 
 LegupConfig *LEGUP_CONFIG = &LegupConfigObj;
 
-#define NUM_PARAMETERS 126
+#define NUM_PARAMETERS 127
 const std::string validParameters[NUM_PARAMETERS] = {
     "ALIAS_ANALYSIS", "CLOCK_PERIOD", "DEBUG_MODULO_DEPENDENT",
     "DEBUG_MODULO_TABLE", "DEBUG_PERTURBATION", "DEBUG_VERIFY_INCR_SDC",
@@ -100,8 +100,10 @@ const std::string validParameters[NUM_PARAMETERS] = {
     "SYSTEM_MEMORY_SIM_INIT_FILE_TYPE", // DAT
     "SYSTEM_MEMORY_SIM_INIT_FILE_NAME", // The simulation memory init file
     "DIVIDER_MODULE",                   // Altera or generic dividers
-    "INFERRED_RAM_FORMAT"               // Altera or Xilinx RAM format
+    "INFERRED_RAM_FORMAT",              // Altera or Xilinx RAM format
                                         // End of system parameters
+    // Start of custom parameters
+    "ASIC_IMPLEMENTATION" // Design is targeted for ASIC implementation
 
 };
 

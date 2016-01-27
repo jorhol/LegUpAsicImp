@@ -31,45 +31,50 @@ class RAM;
 /// Also handles printing memory controller, test suite, and avalon interface
 /// @brief VerilogWriter Class
 class VerilogWriter {
-public:
-    //NC changes...
-    VerilogWriter(raw_ostream &StreamOut, Allocation *alloc, std::set<const
-		  Function*> AcceleratedFcts) : StreamOut(StreamOut), alloc(alloc),
-						AcceleratedFcts(AcceleratedFcts), usesSynchronization(false) {}
-    VerilogWriter(raw_ostream &StreamOut, Allocation *alloc) : StreamOut(StreamOut),
-							 alloc(alloc), usesSynchronization(false) {}
+  public:
+    // NC changes...
+    VerilogWriter(raw_ostream &StreamOut, Allocation *alloc,
+                  std::set<const Function *> AcceleratedFcts)
+        : StreamOut(StreamOut), alloc(alloc), AcceleratedFcts(AcceleratedFcts),
+          usesSynchronization(false) {}
+    VerilogWriter(raw_ostream &StreamOut, Allocation *alloc)
+        : StreamOut(StreamOut), alloc(alloc), usesSynchronization(false) {}
     void print();
-    
+
     void printRTL(const RTLModule *rtl);
-    
-    //NC changes...    
-    void setRTL(const RTLModule* rtl) { this->rtl = rtl;}
-    
+
+    // NC changes...
+    void setRTL(const RTLModule *rtl) { this->rtl = rtl; }
+
     void printSignal(const RTLSignal *signal);
     void printRamInstance(RAM *R);
-    void printSignalConditionForInstruction(const RTLSignal* signal, const Instruction* I);
+    void printSignalConditionForInstruction(const RTLSignal *signal,
+                                            const Instruction *I);
     void clearStringStreamBuffer() { this->Out.str(""); }
     std::string getStringStreamOut() { return this->Out.str(); }
     //
-    
-private:
-    void printValue(const RTLSignal *sig,unsigned w=0, bool zeroExtend=false);
+
+  private:
+    void printValue(const RTLSignal *sig, unsigned w = 0,
+                    bool zeroExtend = false);
     void printValueMinBW(const RTLSignal *sig, unsigned w, bool zeroExtend);
 
     bool stripRAM(RAM *R);
 
     void printCaseFSM(const RTLSignal *signal, std::string assignOp);
-    void caseConditions(const RTLSignal *condition, 
-			std::vector<const RTLSignal *> &clausesToKeep);
+    void caseConditions(const RTLSignal *condition,
+                        std::vector<const RTLSignal *> &clausesToKeep);
     void getStateName(const RTLSignal *condition, std::string &param);
 
-    void printComments(const Instruction *I, std::string prefix="");
-    //NC changes.. 
-    //void printSignal(const RTLSignal *signal);
-    void printIndividualCondition(const RTLSignal* signal, int conditionNum, std::string assignOp, bool printCmnts);
-    
+    void printComments(const Instruction *I, std::string prefix = "");
+    // NC changes..
+    // void printSignal(const RTLSignal *signal);
+    void printIndividualCondition(const RTLSignal *signal, int conditionNum,
+                                  std::string assignOp, bool printCmnts);
+
     void printConditions(const RTLSignal *signal, std::string assignOp);
-    std::string bitsForSignalAndModuleName(const RTLSignal *sig, std::string name);
+    std::string bitsForSignalAndModuleName(const RTLSignal *sig,
+                                           std::string name);
     void printModuleInstance(std::stringstream &Out, const RTLModule *mod);
     void printMemCtrlModuleHeader();
     void printMemCtrlVariablesSignals(std::string postfix);
@@ -79,8 +84,8 @@ private:
     void printPrevAddr(RAM *R, std::string postfix, std::string name);
     void printAlwaysTrigger(const RTLSignal *signal, const RTLSignal *driver);
     bool isConst(const RTLSignal *sig);
-    
-    void printTop(const Function * F);
+
+    void printTop(const Function *F);
     void printRAMModule();
     void printInferredRAMModule(bool readonly);
     void printAltSyncRAMModule(bool readonly);
@@ -177,7 +182,7 @@ private:
     void printMemoryDataReceivers(std::string postfix);
     void printMemorySignalDeclarations(std::string postfix);
     void printoffChipMemoryFlags(std::string postfix);
-    
+
     void printSynchronizationControllerVariables();
     void printSynchronizationControllerInstance();
     void printSynchronizationController();
@@ -198,9 +203,9 @@ private:
     std::stringstream Out;
     Allocation *alloc;
     const RTLModule *rtl;
-    const std::set<const Function*> AcceleratedFcts;
-    
-    //std::map<std::string, std::set<std::string> > syncMap;
+    const std::set<const Function *> AcceleratedFcts;
+
+    // std::map<std::string, std::set<std::string> > syncMap;
     std::map<std::string, int> syncMap;
     std::map<std::string, std::string> globalAddresses;
     bool usesSynchronization;

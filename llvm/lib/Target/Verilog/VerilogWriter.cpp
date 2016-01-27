@@ -119,7 +119,8 @@ void VerilogWriter::print() {
         printDebugModule();
     }
 
-    if (LEGUP_CONFIG->getTopLevelModule() == "") {
+    if (LEGUP_CONFIG->getTopLevelModule() == "" &&
+        !(LEGUP_CONFIG->getParameterInt("ASIC_IMPLEMENTATION"))) {
         printBoardTops();
         printHex();
     }
@@ -128,12 +129,30 @@ void VerilogWriter::print() {
     // or if there is a custom test bench, or
     // if it is the pcie flow
     if (!LEGUP_CONFIG->isHybridFlow() && !LEGUP_CONFIG->usesCustomTestBench() &&
-        !LEGUP_CONFIG->isPCIeFlow()) {
+        !LEGUP_CONFIG->isPCIeFlow() &&
+        !(LEGUP_CONFIG->getParameterInt("ASIC_IMPLEMENTATION"))) {
         printVerilogTestbench();
     }
 
     StreamOut << Out.str();
     StreamOut.flush();
+
+    // print testbench to separate file if ASIC implementation
+    if (LEGUP_CONFIG->getParameterInt("ASIC_IMPLEMENTATION")) {
+        Out.str(std::string());
+        printVerilogTestbench();
+
+        string ErrorInfo;
+        raw_fd_ostream TbStreamOut("test_main.v", ErrorInfo,
+                                   llvm::sys::fs::F_None);
+
+        if (!ErrorInfo.empty()) {
+            errs() << "Error: " << ErrorInfo << '\n';
+            assert(0);
+        }
+        TbStreamOut << Out.str();
+        TbStreamOut.flush();
+    }
 }
 
 void VerilogWriter::printBlankDefaultCase(std::string indent) {
@@ -1926,10 +1945,10 @@ void VerilogWriter::printDE2() {
       "module de2 (CLOCK_50, KEY, SW, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, HEX6, HEX7, LEDG";
 
     PropagatingSignals *ps = alloc->getPropagatingSignals();
-    std::vector<PropagatingSignal *> signals = 
+    std::vector<PropagatingSignal *> signals =
       ps->getPropagatingSignalsForFunctionNamed("main");
     for (std::vector<PropagatingSignal *>::iterator si = signals.begin(); si != signals.end(); ++si) {
-      
+
       PropagatingSignal *propSignal = *si;
       std::string name = propSignal->getName();
       if (!stringInDE2PropertyList(name) && !(propSignal->stopsAtTopLevelModule()))
@@ -1944,7 +1963,7 @@ void VerilogWriter::printDE2() {
     Out << ");\n";
 
     for (std::vector<PropagatingSignal *>::iterator si = signals.begin(); si != signals.end(); ++si) {
-      
+
       PropagatingSignal *propSignal = *si;
       if (!stringInDE2PropertyList(propSignal->getName()) && !(propSignal->stopsAtTopLevelModule())) {
 	if (propSignal->getType() == "input") {
@@ -1957,7 +1976,7 @@ void VerilogWriter::printDE2() {
       }
     }
 
-    Out << 
+    Out <<
     "    input CLOCK_50;\n" <<
     "    output [7:0] LEDG;\n" <<
     "    input [3:0] KEY;\n" <<
@@ -1987,7 +2006,7 @@ void VerilogWriter::printDE2() {
     }
     Out <<
     "    wire reset = ~KEY[0];\n";
-    //NC changes...    
+    //NC changes...
     if (LEGUP_CONFIG->getParameterInt("INSPECT_DEBUG") || LEGUP_CONFIG->getParameterInt("INSPECT_ONCHIP_BUG_DETECT_DEBUG")) {
         Out << "   reg go /* synthesis preserve */;\n"<<
         "   reg [28:0] cnt = 29'b0;\n" <<
@@ -1997,14 +2016,14 @@ void VerilogWriter::printDE2() {
         "       if (cnt == 29'd500000000)\n"<<
         "       go = 1'b1;\n" <<
         "       else\n" <<
-        "       go = 1'b0;\n" <<                        
+        "       go = 1'b0;\n" <<
         "   end\n";
     } else if (LEGUP_CONFIG->getParameterInt("INSERT_DEBUG_CORE")){
 
     } else {
         Out << "    wire go = ~KEY[1];\n";
-    }            
-            
+    }
+
     Out << "\n" <<
     "    wire  start;\n" <<
     "    wire [31:0] return_val;\n" <<
@@ -2729,7 +2748,11 @@ void VerilogWriter::printVerilogTestbench() {
         t->addOut("hlsd_state")->connect(debugger_state);
     }
 
-    std::string old_body = m->getBody();
+    std::string old_body = "";
+    if (!LEGUP_CONFIG->getParameterInt("ASIC_IMPLEMENTATION")) {
+        std::string old_body = m->getBody();
+    }
+
     raw_string_ostream body(old_body);
 
     body << "\n"
