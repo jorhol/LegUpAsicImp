@@ -5884,10 +5884,60 @@ void GenerateRTL::generateModuleDeclaration() {
                                      waitState);
     }
 
-    // function arguments are inputs
-    for (Function::arg_iterator i = Fp->arg_begin(), e = Fp->arg_end(); i != e;
-         ++i) {
-        rtl->addIn(verilogName(i), RTLWidth(i->getType()));
+    // Add custom main function IO
+    if (LEGUP_CONFIG->getParameterInt("ASIC_IMPLEMENTATION") &&
+        LEGUP_CONFIG->isCustomMain()) {
+        // bool isCM = ;
+        /*assert(
+                isCM
+                        && "No Custom Main function specified.\n");
+        */
+
+        outs() << "ASIC_IMPLEMENTATION and isCustomVerilog\n\n";
+        for (Function::arg_iterator i = Fp->arg_begin(), e = Fp->arg_end();
+             i != e; ++i) {
+            std::vector<CustomVerilogIO> cmIO = LEGUP_CONFIG->getCustomMainIO();
+
+            for (std::vector<CustomVerilogIO>::iterator it = cmIO.begin();
+                 it != cmIO.end(); ++it) {
+
+                CustomVerilogIO &cmIO = *it;
+
+                if (cmIO.isInput && (cmIO.name == i->getName().str())) {
+                    rtl->addIn(verilogName(i),
+                               RTLWidth(cmIO.bitFrom, cmIO.bitTo));
+                } else if (cmIO.name == i->getName().str()) {
+                    rtl->addOutReg(verilogName(i),
+                                   RTLWidth(cmIO.bitFrom, cmIO.bitTo));
+                }
+            }
+        }
+    } else {
+        // function arguments are inputs
+        outs() << "\nASIC_IMPLEMENTATION = "
+               << LEGUP_CONFIG->getParameterInt("ASIC_IMPLEMENTATION")
+               << " and isCustomVerilog = " << LEGUP_CONFIG->isCustomMain()
+               << "\n\n";
+        outs() << "getCustomMainCount = " << LEGUP_CONFIG->getCustomMainCount()
+               << "\n\n";
+        for (Function::arg_iterator i = Fp->arg_begin(), e = Fp->arg_end();
+             i != e; ++i) {
+
+            if (LEGUP_CONFIG->getParameterInt("ASIC_IMPLEMENTATION")) {
+                std::string sigName = i->getName();
+                if (sigName.find("__in_") == 0) {
+                    i->setName(sigName.substr(5, std::string::npos));
+                    rtl->addIn(verilogName(i), RTLWidth(i->getType()));
+                } else if (sigName.find("__out_") == 0) {
+                    i->setName(sigName.substr(6, std::string::npos));
+                    rtl->addOutReg(verilogName(i), RTLWidth(i->getType()));
+                } else {
+                    rtl->addIn(verilogName(i), RTLWidth(i->getType()));
+                }
+            } else {
+                rtl->addIn(verilogName(i), RTLWidth(i->getType()));
+            }
+        }
     }
 
     // TODO:MATHEW

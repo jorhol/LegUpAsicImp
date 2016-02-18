@@ -147,6 +147,31 @@ return_error:
   return (TCL_ERROR);
 }
 
+int set_custom_main_function(ClientData clientData, Tcl_Interp *interp,
+                             int argc, const char *argv[]) {
+
+    LegupConfig *config = (LegupConfig *)clientData;
+
+    // Must have the tcl command and 3 arguments for each I/O.
+    // Hence, it must have >= 1 arguments and the number of arguments minus the
+    // tcl command and the function name must be divisible by 3.
+    if (argc < 1 || ((argc - 1) % 3)) {
+        goto return_error;
+    }
+
+    if (!config->addCustomMain(&(argv[1]), argc - 1)) {
+        goto return_error;
+    }
+    return (TCL_OK);
+
+return_error:
+    static char error[] = "wrong # args: should be "
+                          "\"set_custom_main_function "
+                          "[input or output] high_bit:low_bit signalName>\"";
+    interp->result = error;
+    return (TCL_ERROR);
+}
+
 /// set_accelerator_function - tcl command to add an accelerator function
 int set_accelerator_function(ClientData clientData, Tcl_Interp *interp,
                              int argc, const char *argv[]) {
@@ -770,14 +795,16 @@ Tcl_Interp *setupTcl(LegupConfig *legupConfig) {
                       set_custom_top_level_module, legupConfig, 0);
     Tcl_CreateCommand(interp, "set_custom_test_bench_module",
                       set_custom_test_bench_module, legupConfig, 0);
-  Tcl_CreateCommand(interp, "set_custom_verilog_file", set_custom_verilog_file,
-                    legupConfig, 0);
-  Tcl_CreateCommand(interp, "set_custom_verilog_function",
-                    set_custom_verilog_function, legupConfig, 0);
-  Tcl_CreateCommand(interp, "set_accelerator_function",
-                    set_accelerator_function, legupConfig, 0);
-  Tcl_CreateCommand(interp, "set_parallel_accelerator_function",
-                    set_parallel_accelerator_function, legupConfig, 0);
+    Tcl_CreateCommand(interp, "set_custom_verilog_file",
+                      set_custom_verilog_file, legupConfig, 0);
+    Tcl_CreateCommand(interp, "set_custom_verilog_function",
+                      set_custom_verilog_function, legupConfig, 0);
+    Tcl_CreateCommand(interp, "set_custom_main_function",
+                      set_custom_main_function, legupConfig, 0);
+    Tcl_CreateCommand(interp, "set_accelerator_function",
+                      set_accelerator_function, legupConfig, 0);
+    Tcl_CreateCommand(interp, "set_parallel_accelerator_function",
+                      set_parallel_accelerator_function, legupConfig, 0);
   Tcl_CreateCommand(interp, "set_dcache_size", set_dcache_size, legupConfig, 0);
   Tcl_CreateCommand(interp, "set_dcache_linesize", set_dcache_linesize,
                     legupConfig, 0);

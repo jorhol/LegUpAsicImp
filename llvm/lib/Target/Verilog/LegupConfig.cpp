@@ -725,4 +725,15 @@ LegupConfig::getCustomVerilogIOForFunctionNamed(const std::string &function) {
     return emptyVector;
 }
 
+std::vector<CustomVerilogIO> LegupConfig::getCustomMainIO() {
+    std::set<legup::CustomVerilogFunction>::iterator cf =
+        customMainFunctions.find((std::string) "main");
+    if (cf != customMainFunctions.end()) {
+        legup::CustomVerilogFunction customFunction = *cf;
+        return customFunction.getIO();
+    }
+    std::vector<CustomVerilogIO> emptyVector;
+    return emptyVector;
+}
+
 } // End legup namespace

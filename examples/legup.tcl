@@ -103,11 +103,14 @@ set_parameter ASIC_IMPLEMENTATION 1
 # structs in your program forces this parameter to turn off
 set_parameter INFERRED_RAMS 1
 
+# User Xilinx RAM format for inferred rams. (Single always block)
+set_parameter INFERRED_RAM_FORMAT xilinx
+
 # Place constant arrays into RAMs instead of the default read-only memory
 #set_parameter NO_ROMS 1
 
 # Explicitly instantiate all multipliers as lpm_mult modules
-#set_parameter EXPLICIT_LPM_MULTS 1
+set_parameter EXPLICIT_LPM_MULTS 0
 
 # Don't chain multipliers
 #set_parameter MULTIPLIER_NO_CHAIN 1
@@ -191,13 +194,13 @@ set_parameter PS_MIN_WIDTH 2
 
 # MinimizeBitwidth parameters
 #set to 1 to print bitwidth minimization stats
-#set_parameter MB_PRINT_STATS 1
+set_parameter MB_PRINT_STATS 1
 #set to filename from which to read initial data ranges.  If it's
 #undefined, then no initial ranges are assumed
 #set_parameter MB_RANGE_FILE "range.profile"
 #max number of backward passes to execute (-1 for infinite)
 set_parameter MB_MAX_BACK_PASSES -1
-set_parameter MB_MINIMIZE_HW 0
+set_parameter MB_MINIMIZE_HW 1
 
 
 # Minimum pattern frequency written to dot/v file
@@ -214,7 +217,7 @@ set_parameter MB_MINIMIZE_HW 0
 # Disable chaining of operations in a clock cycle. This will achieve the
 # maximum amount of pipelining.
 # Note: this overrides CLOCK_PERIOD
-#set_parameter SDC_NO_CHAINING 1
+set_parameter SDC_NO_CHAINING 1
 
 # Perform as-late-as-possible (ALAP) scheduling instead of as-soon-as-possible
 # (ASAP).
@@ -268,7 +271,7 @@ set_parameter MB_MINIMIZE_HW 0
 #set_parameter TEST_WAITREQUEST 1
 
 # Disable assertions in Verilog output used to debug LegUp
-#set_parameter VSIM_NO_ASSERT 1
+set_parameter VSIM_NO_ASSERT 1
 
 # SDC resource constraints
 set_parameter SDC_RES_CONSTRAINTS 1
@@ -541,11 +544,13 @@ set_parameter INSPECT_DEBUG_DB_SCRIPT_FILE $::CURRENT_PATH/inspect_db.sql
 # WARNING: multicycling and bitwidth minimization have only been tested with
 # altera dividers
 # Turn this on to use generic dividers:
-#set_parameter DIVIDER_MODULE "generic"
+set_parameter DIVIDER_MODULE "generic"
 # Turn this on to use Altera-specific lpm_divide units:
-set_parameter DIVIDER_MODULE "altera"
+#set_parameter DIVIDER_MODULE "altera"
 
 # turn on pass to combine basic blocks
 # 1 to enable merging of all patterns
 # 2 to enable only within loops
 #set_combine_basicblock 1
+
+set_custom_main_function input 15:0 inDataA input 31:0 inDataB output 21:0 outData input 31:0 test

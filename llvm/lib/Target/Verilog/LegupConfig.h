@@ -161,6 +161,22 @@ public:
     return true;
   }
 
+  int getCustomMainCount() { return customMainFunctions.size(); }
+
+  bool addCustomMain(const char **args, int numArgs) {
+
+      legup::CustomVerilogFunction function("main");
+      for (int i = 0; i < numArgs; i += 3) {
+
+          if (!function.addIO(args[i + 2], args[i + 1], args[i])) {
+
+              return false;
+          }
+      }
+      customMainFunctions.insert(function);
+      return true;
+  }
+
   /// addCustomVerilogFile - add a file name to the set of custom verilog
   /// files
   void addCustomVerilogFile(std::string file) {
@@ -182,6 +198,8 @@ public:
 
   std::vector<CustomVerilogIO>
   getCustomVerilogIOForFunctionNamed(const std::string &function);
+
+  std::vector<CustomVerilogIO> getCustomMainIO();
 
   std::string getCustomTestBench() { return testBench; }
 
@@ -436,9 +454,15 @@ public:
     return isCustomVerilog;
   }
 
+  bool isCustomMain() const {
+      bool isCustomMain = customMainFunctions.find((std::string) "main") !=
+                          customMainFunctions.end();
+      return isCustomMain;
+  }
+
   bool customVerilogUsesMemory(const Function &F) const {
-    std::string name = F.getName().str();
-    return customVerilogUsesMemory(name);
+      std::string name = F.getName().str();
+      return customVerilogUsesMemory(name);
   }
 
   bool customVerilogUsesMemory(const std::string &F) const {
@@ -621,6 +645,7 @@ private:
   std::set<std::string> parallelfunctions;
   std::set<std::string> pthreadfunctions;
   std::set<CustomVerilogFunction> customVerilogFunctions;
+  std::set<CustomVerilogFunction> customMainFunctions;
   std::set<std::string> customVerilogFiles;
 
   std::string topLevelModule;
