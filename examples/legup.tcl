@@ -553,4 +553,4 @@ set_parameter DIVIDER_MODULE "generic"
 # 2 to enable only within loops
 #set_combine_basicblock 1
 
-set_custom_main_function input 15:0 inDataA input 31:0 inDataB output 21:0 outData input 31:0 test
+#set_custom_main_function input 15:0 inDataA input 31:0 inDataB output 21:0 outData input 31:0 test

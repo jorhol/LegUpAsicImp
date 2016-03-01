@@ -34,7 +34,7 @@ int Int3(a) {
 // int inData[] = {52, 84};
 
 // square-root approximation:
-int main(int inDataA, int inDataB, int outData, int test) {
+int main(int inDataA, int inDataB, int __out_outData, int __out_test) {
     // Int3_type g;
     // int r = Int3(inDataC);
     // g.x = inDataC;
@@ -52,8 +52,10 @@ int main(int inDataA, int inDataB, int outData, int test) {
     // int x = max(abs(a), abs(b));
     // int y = min(abs(a), abs(b));
     // int sqrt = max(x, x-(x>>3)+(y>>1));
-    outData = inDataA + inDataB;
-    return outData;
+    __out_outData = inDataA + inDataB;
+    __out_test = inDataA * inDataB;
+    __out_test = inDataA + 3 * inDataB;
+    return inDataA;
     // r.x = a;
     // r.y = b;
     // r.sqrt = sqrt;
