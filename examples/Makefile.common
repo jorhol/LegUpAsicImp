@@ -193,6 +193,9 @@ ifeq ($(LLVM_PROFILE),1)
 	# Finished Profiling
 	# --------------------------------------------------------------------------
 endif # LLVM_PROFILE
+
+	$(LEVEL)/LlvmParser.run $(NAME).ll LlvmParsed.log
+
 	# produces verilog: $(NAME).v
 	$(LLVM_HOME)llc $(LLC_FLAGS) -march=v $(NAME).bc -o $(VFILE)
 

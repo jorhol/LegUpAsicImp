@@ -467,9 +467,10 @@ public:
     RTLSignal* createFPFU(Instruction *instr, RTLSignal *op0, RTLSignal *op1, unsigned opCode);
     RTLSignal* createFPFUUnary(Instruction *instr, RTLSignal *op0, unsigned opCode);
     RTLSignal* createFCmpFU(Instruction *instr, RTLSignal *op0, RTLSignal *op1);
-    RTLSignal *createFP_FU_Helper(std::string fu_name, Instruction
-            *instr, RTLSignal *op0, RTLSignal *op1, RTLModule *d);
+    RTLSignal *createFP_FU_Helper(std::string fu_name, Instruction *instr,
+                                  RTLSignal *op0, RTLSignal *op1, RTLModule *d);
     void createMultiPumpMultiplierFU(Instruction *AxB, Instruction *CxD);
+    void connectCustomOutputsToRTLSignals();
     void createRTLSignals();
     void createRTLSignalsForInstructions();
     void createRTLSignalsForLocalRams();

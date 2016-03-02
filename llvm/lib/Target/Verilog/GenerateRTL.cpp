@@ -5887,13 +5887,7 @@ void GenerateRTL::generateModuleDeclaration() {
     // Add custom main function IO
     if (LEGUP_CONFIG->getParameterInt("ASIC_IMPLEMENTATION") &&
         LEGUP_CONFIG->isCustomMain()) {
-        // bool isCM = ;
-        /*assert(
-                isCM
-                        && "No Custom Main function specified.\n");
-        */
 
-        outs() << "ASIC_IMPLEMENTATION and isCustomVerilog\n\n";
         for (Function::arg_iterator i = Fp->arg_begin(), e = Fp->arg_end();
              i != e; ++i) {
             std::vector<CustomVerilogIO> cmIO = LEGUP_CONFIG->getCustomMainIO();
@@ -5913,13 +5907,8 @@ void GenerateRTL::generateModuleDeclaration() {
             }
         }
     } else {
-        // function arguments are inputs
-        outs() << "\nASIC_IMPLEMENTATION = "
-               << LEGUP_CONFIG->getParameterInt("ASIC_IMPLEMENTATION")
-               << " and isCustomVerilog = " << LEGUP_CONFIG->isCustomMain()
-               << "\n\n";
-        outs() << "getCustomMainCount = " << LEGUP_CONFIG->getCustomMainCount()
-               << "\n\n";
+        // function arguments are inputs or outputs depending on prefix. Default
+        // is input
         for (Function::arg_iterator i = Fp->arg_begin(), e = Fp->arg_end();
              i != e; ++i) {
 
@@ -5929,7 +5918,8 @@ void GenerateRTL::generateModuleDeclaration() {
                     i->setName(sigName.substr(5, std::string::npos));
                     rtl->addIn(verilogName(i), RTLWidth(i->getType()));
                 } else if (sigName.find("__out_") == 0) {
-                    i->setName(sigName.substr(6, std::string::npos));
+                    sigName = sigName.substr(6, std::string::npos);
+                    i->setName(sigName);
                     rtl->addOutReg(verilogName(i), RTLWidth(i->getType()));
                 } else {
                     rtl->addIn(verilogName(i), RTLWidth(i->getType()));
@@ -5957,6 +5947,33 @@ void GenerateRTL::generateModuleDeclaration() {
     waitState->setTransitionSignal(rtl->find("start"));
 
     connectSignalToDriverInState(rtl->find("finish"), ZERO, waitState);
+}
+
+void GenerateRTL::connectCustomOutputsToRTLSignals() {
+    // Read file containing connections between targets and sources
+    ifstream inFile("LlvmParsed.log");
+    vector<string> targets;
+    vector<string> sources;
+    if (inFile.is_open()) {
+        string line;
+        // Read file line by line
+        while (getline(inFile, line)) {
+            string whitespace(" ");
+            size_t split = line.find(whitespace);
+            if (split != string::npos) {
+                targets.push_back(line.substr(0, split));
+                sources.push_back(line.substr(split + 1, string::npos));
+            }
+        }
+        inFile.close();
+    }
+    // Connect each driving source to its target
+    for (uint i = 0; i < targets.size(); ++i) {
+        RTLSignal *sourceSig = rtl->find("main_0_" + sources[i] + "_reg");
+        RTLSignal *targetSig = rtl->find("arg_" + targets[i]);
+        targetSig->addCondition(sourceSig->getCondition(0),
+                                sourceSig->getDriver(0));
+    }
 }
 
 bool ignoreInstruction(const Instruction *I) {
@@ -6343,13 +6360,13 @@ RTLModule* GenerateRTL::generateRTL(MinimizeBitwidth *_MBW) {
 
 	generateModuleDeclaration();
 
-	createRTLSignals();
+    createRTLSignals();
 
-	// function calls are a special case because they can modify the
-	// finite state machine. Do these first:
-	generateAllCallInsts();
+    // function calls are a special case because they can modify the
+    // finite state machine. Do these first:
+    generateAllCallInsts();
 
-	// loop pipelines (which also modifies fsm)
+    // loop pipelines (which also modifies fsm)
 	generateAllLoopPipelines();
 
 	updateStatesAfterCallInsts();
@@ -6460,11 +6477,13 @@ RTLModule* GenerateRTL::generateRTL(MinimizeBitwidth *_MBW) {
 		if (Fp == f) {
 			// RAM is local to this function
 			assert(rtl->localRamList.find(r) == rtl->localRamList.end());
-			rtl->localRamList.insert(r);
-		}
-	}
-
-	return rtl;
+            rtl->localRamList.insert(r);
+        }
+    }
+    if (LEGUP_CONFIG->getParameterInt("ASIC_IMPLEMENTATION")) {
+        connectCustomOutputsToRTLSignals();
+    }
+    return rtl;
 }
 
 // Get the number of succcessors that are in the same state
