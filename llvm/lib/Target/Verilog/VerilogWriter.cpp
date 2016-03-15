@@ -2692,53 +2692,78 @@ void VerilogWriter::printVerilogTestbench() {
         debugger_state = m->addWire("debugger_state", RTLWidth(8));
     }
 
-    RTLModule *t = m->addModule("top", "top_inst");
-    t->addIn("clk")->connect(clk);
+    RTLModule *t = m->addModule("main", "main_inst");
+    if (LEGUP_CONFIG->getParameterInt("ASIC_IMPLEMENTATION")) {
+        RTLModule *rtl = alloc->getModuleForFunction(
+            alloc->getModule()->getFunction("main"));
+        if (rtl->getName().compare("main") == 0) {
+            for (RTLModule::const_signal_iterator i = rtl->port_begin(),
+                                                  e = rtl->port_end();
+                 i != e; ++i) {
+                const RTLSignal *s = *i;
+                RTLSignal *d;
+                string type = s->getType();
+                if (!type.empty()) {
+                    outs() << "type: " << type << "\n";
+                    if (type.compare(0, 6, "output") == 0) {
+                        d = m->addWire(s->getName(), s->getWidth());
+                        t->addOut(s->getName(), s->getWidth())->connect(d);
+                    } else {
+                        d = m->addReg(s->getName(), s->getWidth());
+                        t->addIn(s->getName(), s->getWidth())->connect(d);
+                    }
+                }
+            }
+        }
+    } else {
+        t->addIn("clk")->connect(clk);
 
-    if (LEGUP_CONFIG->getParameterInt("MULTIPUMPING")) {
-        RTLSignal *clk_orig = m->addReg("clk_orig");
-        RTLSignal *clk2x = m->addWire("clk2x");
-        RTLSignal *clk1x_follower = m->addWire("clk1x_follower");
+        if (LEGUP_CONFIG->getParameterInt("MULTIPUMPING")) {
+            RTLSignal *clk_orig = m->addReg("clk_orig");
+            RTLSignal *clk2x = m->addWire("clk2x");
+            RTLSignal *clk1x_follower = m->addWire("clk1x_follower");
 
-        t->addIn("clk2x")->connect(clk2x);
-        t->addIn("clk1x_follower")->connect(clk1x_follower);
+            t->addIn("clk2x")->connect(clk2x);
+            t->addIn("clk1x_follower")->connect(clk1x_follower);
 
-        // create pll
-        /*pll	pll_inst (
-            .inclk0 ( clk_orig ), // 50 MHz
-            .c0 ( clk ), // 50 MHz
-            .c1 ( clk2x ) // 100 MHz
+            // create pll
+            /*pll	pll_inst (
+                .inclk0 ( clk_orig ), // 50 MHz
+                .c0 ( clk ), // 50 MHz
+                .c1 ( clk2x ) // 100 MHz
+                );
+                */
+            RTLModule *pll = m->addModule("pll", "pll_inst");
+            pll->addIn("inclk0")->connect(clk_orig);
+            // must have 1x clock coming from the same PLL as the 2x clock to
+            // avoid
+            // large clock skew that can cause hold-time violations
+            pll->addOut("c0")->connect(clk);
+            pll->addOut("c1")->connect(clk2x);
+
+            // create clock follower
+            /*
+            clock_follower clock_follower_inst (
+                .reset ( reset ),
+                .clk1x ( clk ),
+                .clk2x ( clk2x ),
+                .clk1x_follower ( clk1x_follower )
             );
             */
-        RTLModule *pll = m->addModule("pll", "pll_inst");
-        pll->addIn("inclk0")->connect(clk_orig);
-        // must have 1x clock coming from the same PLL as the 2x clock to avoid
-        // large clock skew that can cause hold-time violations
-        pll->addOut("c0")->connect(clk);
-        pll->addOut("c1")->connect(clk2x);
+            RTLModule *clock_follower =
+                m->addModule("clock_follower", "clock_follower_inst");
+            clock_follower->addIn("reset")->connect(reset);
+            clock_follower->addIn("clk1x")->connect(clk);
+            clock_follower->addIn("clk2x")->connect(clk2x);
+            clock_follower->addOut("clk1x_follower")->connect(clk1x_follower);
+        }
 
-        // create clock follower
-        /*
-        clock_follower clock_follower_inst (
-            .reset ( reset ),
-            .clk1x ( clk ),
-            .clk2x ( clk2x ),
-            .clk1x_follower ( clk1x_follower )
-        );
-        */
-        RTLModule *clock_follower =
-            m->addModule("clock_follower", "clock_follower_inst");
-        clock_follower->addIn("reset")->connect(reset);
-        clock_follower->addIn("clk1x")->connect(clk);
-        clock_follower->addIn("clk2x")->connect(clk2x);
-        clock_follower->addOut("clk1x_follower")->connect(clk1x_follower);
+        t->addIn("reset")->connect(reset);
+        t->addIn("start")->connect(start);
+        t->addIn("waitrequest")->connect(wait);
+        t->addOut("finish")->connect(finish);
+        t->addOut("return_val")->connect(return_val);
     }
-
-    t->addIn("reset")->connect(reset);
-    t->addIn("start")->connect(start);
-    t->addIn("waitrequest")->connect(wait);
-    t->addOut("finish")->connect(finish);
-    t->addOut("return_val")->connect(return_val);
 
     if (alloc->getDbgInfo()->isDebugRtlEnabled()) {
         t->addOut(DEBUG_SIGNAL_NAME_ACTIVE_INST)->connect(pc_module);

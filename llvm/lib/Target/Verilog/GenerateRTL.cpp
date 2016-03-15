@@ -2543,7 +2543,8 @@ void GenerateRTL::createFunction(CallInst &I) {
 
         // MATHEW: Is there a better way to do this?
         if (!(LEGUP_CONFIG->isCustomVerilog(*called) &&
-              !(LEGUP_CONFIG->customVerilogUsesMemory(*called)))) {
+              !(LEGUP_CONFIG->customVerilogUsesMemory(*called))) &&
+            !(LEGUP_CONFIG->getParameterInt("ASIC_IMPLEMENTATION"))) {
 
             // Setting up the memory controller signals
             createFunctionMemorySignals(callState, CI, name, "_a", numThreads,
@@ -5954,22 +5955,27 @@ void GenerateRTL::connectCustomOutputsToRTLSignals() {
     ifstream inFile("LlvmParsed.log");
     vector<string> targets;
     vector<string> sources;
+    vector<string> labels;
     if (inFile.is_open()) {
         string line;
         // Read file line by line
         while (getline(inFile, line)) {
             string whitespace(" ");
             size_t split = line.find(whitespace);
+            size_t splitNext = line.find(whitespace, split + 1);
             if (split != string::npos) {
                 targets.push_back(line.substr(0, split));
-                sources.push_back(line.substr(split + 1, string::npos));
+                sources.push_back(
+                    line.substr(split + 1, splitNext - split - 1));
+                labels.push_back(line.substr(splitNext + 1, string::npos));
             }
         }
         inFile.close();
     }
     // Connect each driving source to its target
     for (uint i = 0; i < targets.size(); ++i) {
-        RTLSignal *sourceSig = rtl->find("main_0_" + sources[i] + "_reg");
+        RTLSignal *sourceSig =
+            rtl->find("main_" + labels[i] + "_" + sources[i] + "_reg");
         RTLSignal *targetSig = rtl->find("arg_" + targets[i]);
         targetSig->addCondition(sourceSig->getCondition(0),
                                 sourceSig->getDriver(0));
@@ -6358,7 +6364,7 @@ RTLModule* GenerateRTL::generateRTL(MinimizeBitwidth *_MBW) {
 	if (usesPthreads)
 		LEGUP_CONFIG->addPthreadFunction(Fp->getName());
 
-	generateModuleDeclaration();
+    generateModuleDeclaration();
 
     createRTLSignals();
 
@@ -6367,11 +6373,11 @@ RTLModule* GenerateRTL::generateRTL(MinimizeBitwidth *_MBW) {
     generateAllCallInsts();
 
     // loop pipelines (which also modifies fsm)
-	generateAllLoopPipelines();
+    generateAllLoopPipelines();
 
-	updateStatesAfterCallInsts();
+    updateStatesAfterCallInsts();
 
-	printFSMDot();
+    printFSMDot();
 
 	connectRegistersToWires();
 
@@ -6474,13 +6480,14 @@ RTLModule* GenerateRTL::generateRTL(MinimizeBitwidth *_MBW) {
 			alloc->isLocalFunctionRam.end(); i != e; ++i) {
 		RAM *r = i->first;
 		Function *f = i->second;
-		if (Fp == f) {
-			// RAM is local to this function
-			assert(rtl->localRamList.find(r) == rtl->localRamList.end());
+        if (Fp == f) {
+            // RAM is local to this function
+            assert(rtl->localRamList.find(r) == rtl->localRamList.end());
             rtl->localRamList.insert(r);
         }
     }
-    if (LEGUP_CONFIG->getParameterInt("ASIC_IMPLEMENTATION")) {
+    if (LEGUP_CONFIG->getParameterInt("ASIC_IMPLEMENTATION") &&
+        rtl->getName() == "main") {
         connectCustomOutputsToRTLSignals();
     }
     return rtl;
