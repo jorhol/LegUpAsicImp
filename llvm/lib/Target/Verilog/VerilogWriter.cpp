@@ -2704,7 +2704,6 @@ void VerilogWriter::printVerilogTestbench() {
                 RTLSignal *d;
                 string type = s->getType();
                 if (!type.empty()) {
-                    outs() << "type: " << type << "\n";
                     if (type.compare(0, 6, "output") == 0) {
                         d = m->addWire(s->getName(), s->getWidth());
                         t->addOut(s->getName(), s->getWidth())->connect(d);

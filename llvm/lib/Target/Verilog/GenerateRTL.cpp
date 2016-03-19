@@ -5922,6 +5922,8 @@ void GenerateRTL::generateModuleDeclaration() {
                     sigName = sigName.substr(6, std::string::npos);
                     i->setName(sigName);
                     rtl->addOutReg(verilogName(i), RTLWidth(i->getType()));
+                    string validSigName = "arg_" + sigName + "_valid";
+                    rtl->addOutReg(validSigName);
                 } else {
                     rtl->addIn(verilogName(i), RTLWidth(i->getType()));
                 }
@@ -5956,6 +5958,10 @@ void GenerateRTL::connectCustomOutputsToRTLSignals() {
     vector<string> targets;
     vector<string> sources;
     vector<string> labels;
+    vector<string> storeVariables;
+    vector<string> storeLabels;
+    set<string> done;
+
     if (inFile.is_open()) {
         string line;
         // Read file line by line
@@ -5963,23 +5969,108 @@ void GenerateRTL::connectCustomOutputsToRTLSignals() {
             string whitespace(" ");
             size_t split = line.find(whitespace);
             size_t splitNext = line.find(whitespace, split + 1);
+            size_t splitNext2 = line.find(whitespace, splitNext + 1);
+            size_t splitNext3 = line.find(whitespace, splitNext2 + 1);
             if (split != string::npos) {
                 targets.push_back(line.substr(0, split));
                 sources.push_back(
                     line.substr(split + 1, splitNext - split - 1));
-                labels.push_back(line.substr(splitNext + 1, string::npos));
+                labels.push_back(
+                    line.substr(splitNext + 1, splitNext2 - splitNext - 1));
+                storeLabels.push_back(
+                    line.substr(splitNext2 + 1, splitNext3 - splitNext2 - 1));
+                storeVariables.push_back(
+                    line.substr(splitNext3 + 1, string::npos));
             }
         }
         inFile.close();
     }
     // Connect each driving source to its target
     for (uint i = 0; i < targets.size(); ++i) {
-        RTLSignal *sourceSig =
-            rtl->find("main_" + labels[i] + "_" + sources[i] + "_reg");
         RTLSignal *targetSig = rtl->find("arg_" + targets[i]);
-        targetSig->addCondition(sourceSig->getCondition(0),
-                                sourceSig->getDriver(0));
+        string sourceName =
+            "main_" + storeLabels[i] + "_" + storeVariables[i] + "_in_a";
+
+        if (done.find(sourceName) == done.end()) {
+            done.insert(sourceName); // Each source should only be added once
+            RTLSignal *sourceSig = rtl->find(sourceName);
+            RTLSignal *validSig = rtl->find("arg_" + targets[i] + "_valid");
+            RTLOp *notValid = rtl->addOp(RTLOp::And);
+
+            // Add each driving signal from sorce as a driver of the target
+            // signal.
+            // Also generate conditions for valid signals and drive these.
+            for (uint j = 1; j < sourceSig->getNumDrivers(); j += 2) {
+                if (sourceSig->getDriver(j)->getName().compare(
+                        targetSig->getName()) != 0) {
+                    targetSig->addCondition(sourceSig->getCondition(j),
+                                            sourceSig->getDriver(j));
+                    if (j + 1 < sourceSig->getNumDrivers()) {
+                        targetSig->addCondition(sourceSig->getCondition(j + 1),
+                                                sourceSig->getDriver(j + 1));
+                    }
+                    if (sourceSig->getCondition(j)->isOp()) {
+                        validSig->addCondition(sourceSig->getCondition(j), ONE);
+                        if (j + 1 < sourceSig->getNumDrivers()) {
+                            validSig->addCondition(
+                                sourceSig->getCondition(j + 1), ONE);
+                        }
+                        if (sourceSig->getNumDrivers() - 1 < 2) {
+                            // Adds deassertion of validSig if only single
+                            // conditions are present.
+                            validSig->addCondition(
+                                rtl->addOp(RTLOp::Not)
+                                    ->setOperands(sourceSig->getCondition(j)),
+                                ZERO);
+                        } else if (sourceSig->getNumDrivers() - 1 < 3 ||
+                                   j == 1) {
+                            notValid->setOperands(
+                                rtl->addOp(RTLOp::Not)
+                                    ->setOperands(sourceSig->getCondition(j)),
+                                rtl->addOp(RTLOp::Not)->setOperands(
+                                    sourceSig->getCondition(j + 1)));
+                        } else if (sourceSig->getNumDrivers() - j > 1) {
+                            RTLSignal *notValid1 =
+                                rtl->addOp(RTLOp::And)->setOperands(
+                                    rtl->addOp(RTLOp::Not)->setOperands(
+                                        sourceSig->getCondition(j)),
+                                    rtl->addOp(RTLOp::Not)->setOperands(
+                                        sourceSig->getCondition(j + 1)));
+                            RTLSignal *notValid2 =
+                                rtl->addOp(RTLOp::And)
+                                    ->setOperands(notValid->getOperand(0),
+                                                  notValid->getOperand(1));
+                            notValid->setOperands(notValid1, notValid2);
+                        } else {
+                            RTLSignal *notValid1 =
+                                rtl->addOp(RTLOp::And)
+                                    ->setOperands(notValid->getOperand(0),
+                                                  notValid->getOperand(1));
+                            notValid->setOperands(
+                                notValid1, rtl->addOp(RTLOp::Not)->setOperands(
+                                               sourceSig->getCondition(j)));
+                        }
+                    }
+                }
+            }
+            // Adds deassertion of validSig if multiple conditions are present.
+            if (notValid->getNumOperands() > 1) {
+                validSig->addCondition(notValid, ZERO);
+            }
+            RTLSignal *reset = rtl->find("reset");
+            validSig->addCondition(reset, ZERO);
+        }
     }
+    // Need a flag to signalize that an iteration of a loop is completed (for
+    // streaming input/continuous calculations).
+    RTLSignal *interationFinish = rtl->addOutReg("interationFinish");
+    // iterationFinish flag should be set in the state preceding the final state
+    // of the FSM.
+    connectSignalToDriverInState(interationFinish, ONE,
+                                 (--fsm->end())->getPrevNode());
+    interationFinish->addCondition(
+        rtl->addOp(RTLOp::Not)->setOperands(interationFinish->getCondition(0)),
+        ZERO);
 }
 
 bool ignoreInstruction(const Instruction *I) {

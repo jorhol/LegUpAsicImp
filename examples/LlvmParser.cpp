@@ -121,7 +121,8 @@ int main(int argc, char *argv[]) {
                     if (sigName.find("__out_") == 0) {
                         sigName = sigName.substr(6, std::string::npos);
                         outFile << sigName << " " << sources[j] << " "
-                                << labels[j] << "\n";
+                                << labels[j] << " " << labels[i] << " "
+                                << targets[i] << "\n";
                     }
                 }
             }
