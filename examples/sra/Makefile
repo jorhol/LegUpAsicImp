@@ -5,8 +5,6 @@ endif
 ifeq ($(NO_INLINE),)
 	NO_INLINE=1
 endif
-#ifeq ($(DEBUG_KEEP_VARS_IN_MEM),)
-#	DEBUG_KEEP_VARS_IN_MEM=1
-#endif
+LOCAL_CONFIG = -legup-config=config.tcl
 LEVEL = ..
 include $(LEVEL)/Makefile.common

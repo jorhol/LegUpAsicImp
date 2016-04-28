@@ -1,6 +1,10 @@
 source ../legup.tcl
 
-set_custom_main_function input 31:0 inDataA\
-                         input 31:0 inDataB\
-                         output 21:0 outData\
-                         input 31:0 test
+set_parameter ASIC_IMPLEMENTATION 1
+set_parameter DIVIDER_MODULE generic
+set_parameter EXPLICIT_LPM_MULTS 0
+set_parameter INFERRED_RAMS 1
+set_parameter INFERRED_RAM_FORMAT xilinx
+set_parameter LOCAL_RAMS 1
+set_parameter SEPARATE_TB_FILE 1
+set_parameter VSIM_NO_ASSERT 1
