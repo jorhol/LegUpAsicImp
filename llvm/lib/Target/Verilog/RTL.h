@@ -431,13 +431,15 @@ public:
     RTLSignal *addWire(std::string name, RTLWidth width=RTLWidth());
 
     /// add constant
-    RTLConst *addConst(std::string value, RTLWidth width=RTLWidth());
+    RTLConst *addConst(std::string value, RTLWidth width = RTLWidth());
+
+    void removeRamSignals(std::vector<std::string> removedRams);
 
     /// add an operation (add, sub, etc)
     RTLOp *addOp(RTLOp::Opcode op);
     RTLOp *addOp(Instruction *instr);
 
-	RTLOp *recursivelyAddOp(RTLOp::Opcode opcode, std::vector<RTLSignal*> signal, int count);
+    RTLOp *recursivelyAddOp(RTLOp::Opcode opcode, std::vector<RTLSignal*> signal, int count);
 
     /// add an instantiated module
     RTLModule *addModule(std::string name, std::string instName);

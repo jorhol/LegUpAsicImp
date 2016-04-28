@@ -145,11 +145,13 @@ public:
     }
 
     /// getRAM - return the RAM object of a LLVM value
-    RAM* getRAM(const Value *I);
+    RAM *getRAM(const Value *I);
 
-    //NC changes
-    int getRamTagNum(RAM* ram);
-    
+    void removeRam(RAM *r);
+
+    // NC changes
+    int getRamTagNum(RAM *ram);
+
     int getRamTagNum(const Value *op);
 
     /// getNumRAMs - return the number of RAM objects

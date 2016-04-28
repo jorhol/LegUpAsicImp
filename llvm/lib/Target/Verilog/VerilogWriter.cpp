@@ -59,7 +59,8 @@ void VerilogWriter::print() {
              it != AcceleratedFcts.end(); ++it) {
             printTop(*it);
         }
-    } else {
+    } // Do not want top-module in ASIC implementation
+    else if (!LEGUP_CONFIG->getParameterInt("ASIC_IMPLEMENTATION")) {
         printTop(NULL);
     }
 
@@ -130,7 +131,7 @@ void VerilogWriter::print() {
     // if it is the pcie flow
     if (!LEGUP_CONFIG->isHybridFlow() && !LEGUP_CONFIG->usesCustomTestBench() &&
         !LEGUP_CONFIG->isPCIeFlow() &&
-        !(LEGUP_CONFIG->getParameterInt("ASIC_IMPLEMENTATION"))) {
+        !(LEGUP_CONFIG->getParameterInt("SEPARATE_TB_FILE"))) {
         printVerilogTestbench();
     }
 
@@ -138,12 +139,16 @@ void VerilogWriter::print() {
     StreamOut.flush();
 
     // print testbench to separate file if ASIC implementation
-    if (LEGUP_CONFIG->getParameterInt("ASIC_IMPLEMENTATION")) {
+    if (LEGUP_CONFIG->getParameterInt("SEPARATE_TB_FILE")) {
         Out.str(std::string());
         printVerilogTestbench();
 
-        string ErrorInfo;
-        raw_fd_ostream TbStreamOut("test_main.v", ErrorInfo,
+        std::string ErrorInfo;
+        std::string tbFilename = "test_main.v";
+        if (LEGUP_CONFIG->getParameter("SEPARATE_TB_FILENAME").size() > 0) {
+            tbFilename = LEGUP_CONFIG->getParameter("SEPARATE_TB_FILENAME");
+        }
+        raw_fd_ostream TbStreamOut(tbFilename.c_str(), ErrorInfo,
                                    llvm::sys::fs::F_None);
 
         if (!ErrorInfo.empty()) {
@@ -2828,6 +2833,13 @@ void VerilogWriter::printVerilogTestbench() {
              << "\tcounter <= 0;\n"
              << "\tend\n"
              << "end\n\n";
+    } else if (LEGUP_CONFIG->getParameterInt("ASIC_IMPLEMENTATION")) {
+        body << "initial begin\n"
+             << "memory_controller_waitrequest <= 1;\n"
+             << "@(negedge clk);\n"
+             << "@(negedge clk);\n"
+             << "memory_controller_waitrequest <= 0;\n"
+             << "end\n\n";
     } else {
         body << "initial begin\n"
              << "waitrequest <= 1;\n"
@@ -2835,6 +2847,16 @@ void VerilogWriter::printVerilogTestbench() {
              << "@(negedge clk);\n"
              << "waitrequest <= 0;\n"
              << "end\n\n";
+    }
+
+    if (LEGUP_CONFIG->getParameter("TB_TESTCASE_FILE").size() > 0) {
+        std::ifstream t(LEGUP_CONFIG->getParameter("TB_TESTCASE_FILE"));
+        std::stringstream buffer;
+        buffer << t.rdbuf();
+        if (buffer.str().size() > 0) {
+            body << "// Custom testcases: ";
+            body << buffer.str();
+        }
     }
 
     m->setBody(body.str());

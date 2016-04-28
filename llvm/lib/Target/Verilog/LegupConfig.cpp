@@ -23,7 +23,7 @@ static LegupConfig LegupConfigObj;
 
 LegupConfig *LEGUP_CONFIG = &LegupConfigObj;
 
-#define NUM_PARAMETERS 127
+#define NUM_PARAMETERS 131
 const std::string validParameters[NUM_PARAMETERS] = {
     "ALIAS_ANALYSIS", "CLOCK_PERIOD", "DEBUG_MODULO_DEPENDENT",
     "DEBUG_MODULO_TABLE", "DEBUG_PERTURBATION", "DEBUG_VERIFY_INCR_SDC",
@@ -103,8 +103,11 @@ const std::string validParameters[NUM_PARAMETERS] = {
     "INFERRED_RAM_FORMAT",              // Altera or Xilinx RAM format
                                         // End of system parameters
     // Start of custom parameters
-    "ASIC_IMPLEMENTATION" // Design is targeted for ASIC implementation
-
+    "ASIC_IMPLEMENTATION",  // Design is targeted for ASIC implementation
+    "SEPARATE_TB_FILE",     // Testbench is printed to a separate Verilog file
+    "SEPARATE_TB_FILENAME", // Filename of testbench output file
+    "TB_TESTCASE_FILE",     // File that contains body of testbench
+    "ENCLOSING_WHILE_LOOP"  // Main function has enclosing while loop
 };
 
 void LegupConfig::checkValidParameter(const std::string name) {

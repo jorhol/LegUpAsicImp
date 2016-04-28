@@ -25,11 +25,14 @@ int set_custom_test_bench_module(ClientData clientData, Tcl_Interp *interp, int
 int set_custom_verilog_file(ClientData clientData, Tcl_Interp *interp, int 
 	argc, const char *argv[]);
 
-int set_custom_verilog_function(ClientData clientData, Tcl_Interp *interp, int 
-	argc, const char *argv[]);
+int set_custom_verilog_function(ClientData clientData, Tcl_Interp *interp,
+                                int argc, const char *argv[]);
 
-int set_accelerator_function(ClientData clientData, Tcl_Interp *interp, int
-        argc, const char *argv[]);
+int set_custom_main_function(ClientData clientData, Tcl_Interp *interp,
+                             int argc, const char *argv[]);
+
+int set_accelerator_function(ClientData clientData, Tcl_Interp *interp,
+                             int argc, const char *argv[]);
 
 int set_parallel_accelerator_function(ClientData clientData, Tcl_Interp *interp, int
         argc, const char *argv[]);

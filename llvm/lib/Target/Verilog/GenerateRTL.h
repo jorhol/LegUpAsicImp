@@ -73,9 +73,12 @@ public:
 
     ~GenerateRTL();
 
+    void addRemovedRam(std::string ramName);
+    std::vector<std::string> getRemovedRams();
+
     /// generateRTL - generate the RTLModule required to implement this
     /// hardware module
-    RTLModule* generateRTL(MinimizeBitwidth *MBW);
+    RTLModule *generateRTL(MinimizeBitwidth *MBW);
 
     Function *getFunction() { return Fp; }
     
@@ -709,6 +712,9 @@ public:
     // different functions.  This is only relevant for debugging
     // since we need to track which instance we are debugging.
     std::vector<RTLModuleInstance *> instances;
+
+    // removed RAMS
+    std::vector<std::string> removedRams;
 };
 
 } // End legup namespace

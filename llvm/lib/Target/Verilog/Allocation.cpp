@@ -561,7 +561,13 @@ void Allocation::allocateLocalRAMs() {
             }
             continue;
         }
-        if (isGlobalRams.find(R) != isGlobalRams.end()) continue;
+        // the user may specify a ram to be local
+        if (LEGUP_CONFIG->isLocalMem((std::string) "main", R->getName())) {
+            continue;
+        }
+
+        if (isGlobalRams.find(R) != isGlobalRams.end())
+            continue;
         out << "Could not detect load/store to ram: " << R->getName() << "\n";
         out << "Forcing to global RAM. I: " << getLabel(R->getValue()) << "\n";
         addGlobalRam(R);
@@ -1082,6 +1088,20 @@ void Allocation::addGlobalRam(RAM *r) {
     isGlobalRams.insert(r);
 }
 
+void Allocation::removeRam(RAM *r) {
+    if (isLocalFunctionRam.find(r) != isLocalFunctionRam.end()) {
+        isLocalFunctionRam.erase(r);
+    }
+    Function *F = isLocalFunctionRam[r];
+    functionToRams[F].erase(r);
+    const Value *const_ramValue = r->getValue();
+    Value *ramValue = const_cast<Value *>(const_ramValue);
+    if ((valueToRam.find(ramValue) != valueToRam.end()) &&
+        (valueToRam.find(ramValue)->second->getScope() == RAM::LOCAL)) {
+        valueToRam.erase(ramValue);
+    }
+}
+
 // Associate a RAM with a specific function and mark it as a local RAM,
 // unless:
 //      1) this RAM is already a global RAM
@@ -1092,10 +1112,15 @@ void Allocation::addLocalRam(Function *F, RAM *r) {
     if (isGlobalRams.find(r) != isGlobalRams.end()) {
     } else if (isLocalFunctionRam.find(r) != isLocalFunctionRam.end()) {
         // this ram is already local to a function
-        if (F != isLocalFunctionRam[r]) {
+        if (F != isLocalFunctionRam[r] &&
+            (F->getName() != "main" ||
+             isLocalFunctionRam[r]->getName() != "main")) {
             // different function -- must be put in global memory
             addGlobalRam(r);
+        } else if (F->getName() == "main") {
+            isLocalFunctionRam[r] = F;
         }
+
     } else {
         isLocalFunctionRam[r] = F;
     }
@@ -1310,4 +1335,3 @@ std::vector<PropagatingSignal *> PropagatingSignals::getPropagatingSignalsForFun
 }
 
 } // End legup namespace
-

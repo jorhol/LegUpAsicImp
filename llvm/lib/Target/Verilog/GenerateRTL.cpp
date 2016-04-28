@@ -5862,7 +5862,9 @@ void GenerateRTL::generateModuleDeclaration() {
     // add parameters for tag offset
     // which is used if there are multiple instances of a RAM
     // for pthreads/openmp
-    addTagOffsetParameterToModule();
+    if (usesPthreads || Fp->hasFnAttribute("totalNumThreads")) {
+        addTagOffsetParameterToModule();
+    }
 
     addDefaultPortsToModule(rtl);
 
@@ -5885,51 +5887,49 @@ void GenerateRTL::generateModuleDeclaration() {
                                      waitState);
     }
 
-    // Add custom main function IO
-    if (LEGUP_CONFIG->getParameterInt("ASIC_IMPLEMENTATION") &&
-        LEGUP_CONFIG->isCustomMain()) {
+    // function arguments are inputs or outputs depending on prefix. Default
+    // is input
+    for (Function::arg_iterator i = Fp->arg_begin(), e = Fp->arg_end(); i != e;
+         ++i) {
 
-        for (Function::arg_iterator i = Fp->arg_begin(), e = Fp->arg_end();
-             i != e; ++i) {
-            std::vector<CustomVerilogIO> cmIO = LEGUP_CONFIG->getCustomMainIO();
-
-            for (std::vector<CustomVerilogIO>::iterator it = cmIO.begin();
-                 it != cmIO.end(); ++it) {
-
-                CustomVerilogIO &cmIO = *it;
-
-                if (cmIO.isInput && (cmIO.name == i->getName().str())) {
-                    rtl->addIn(verilogName(i),
-                               RTLWidth(cmIO.bitFrom, cmIO.bitTo));
-                } else if (cmIO.name == i->getName().str()) {
-                    rtl->addOutReg(verilogName(i),
-                                   RTLWidth(cmIO.bitFrom, cmIO.bitTo));
+        if (LEGUP_CONFIG->getParameterInt("ASIC_IMPLEMENTATION")) {
+            std::string sigName = i->getName();
+            RTLWidth width = RTLWidth(i->getType());
+            std::string sigType = "input";
+            // Define type from name prefix and remove prefix from name
+            if (sigName.find("__in_") == 0) {
+                i->setName(sigName.substr(5, std::string::npos));
+            } else if (sigName.find("__out_") == 0) {
+                sigType = "output";
+                i->setName(sigName.substr(6, std::string::npos));
+            }
+            // Custom IO defined in TCL-command set_custom_main_function
+            if (LEGUP_CONFIG->isCustomMain()) {
+                std::vector<CustomVerilogIO> cmIO =
+                    LEGUP_CONFIG->getCustomMainIO();
+                for (std::vector<CustomVerilogIO>::iterator it = cmIO.begin();
+                     it != cmIO.end(); ++it) {
+                    CustomVerilogIO &cmIO = *it;
+                    if (i->getName() == cmIO.name) {
+                        width = RTLWidth(cmIO.bitFrom, cmIO.bitTo);
+                        if (cmIO.isInput) {
+                            sigType = "input";
+                        } else {
+                            sigType = "output";
+                        }
+                    }
                 }
             }
-        }
-    } else {
-        // function arguments are inputs or outputs depending on prefix. Default
-        // is input
-        for (Function::arg_iterator i = Fp->arg_begin(), e = Fp->arg_end();
-             i != e; ++i) {
-
-            if (LEGUP_CONFIG->getParameterInt("ASIC_IMPLEMENTATION")) {
-                std::string sigName = i->getName();
-                if (sigName.find("__in_") == 0) {
-                    i->setName(sigName.substr(5, std::string::npos));
-                    rtl->addIn(verilogName(i), RTLWidth(i->getType()));
-                } else if (sigName.find("__out_") == 0) {
-                    sigName = sigName.substr(6, std::string::npos);
-                    i->setName(sigName);
-                    rtl->addOutReg(verilogName(i), RTLWidth(i->getType()));
-                    string validSigName = "arg_" + sigName + "_valid";
-                    rtl->addOutReg(validSigName);
-                } else {
-                    rtl->addIn(verilogName(i), RTLWidth(i->getType()));
-                }
+            // Add signal to module based on defined type
+            if (sigType == "input") {
+                rtl->addIn(verilogName(i), width);
             } else {
-                rtl->addIn(verilogName(i), RTLWidth(i->getType()));
+                rtl->addOutReg(verilogName(i), width);
+                string validSigName = "arg_" + i->getName().str() + "_valid";
+                rtl->addOutReg(validSigName);
             }
+        } else {
+            rtl->addIn(verilogName(i), RTLWidth(i->getType()));
         }
     }
 
@@ -6057,19 +6057,28 @@ void GenerateRTL::connectCustomOutputsToRTLSignals() {
             if (notValid->getNumOperands() > 1) {
                 validSig->addCondition(notValid, ZERO);
             }
-            RTLSignal *reset = rtl->find("reset");
-            validSig->addCondition(reset, ZERO);
+        }
+
+        string ramName = "main_" + storeLabels[i] + "_" + storeVariables[i];
+        for (Allocation::const_ram_iterator i = alloc->ram_begin(),
+                                            e = alloc->ram_end();
+             i != e; ++i) {
+            RAM *R = *i;
+            if (R->getName() == ramName) {
+                addRemovedRam(ramName);
+                alloc->removeRam(R);
+            }
         }
     }
     // Need a flag to signalize that an iteration of a loop is completed (for
     // streaming input/continuous calculations).
-    RTLSignal *interationFinish = rtl->addOutReg("interationFinish");
+    RTLSignal *iterationFinish = rtl->addOutReg("iterationFinish");
     // iterationFinish flag should be set in the state preceding the final state
     // of the FSM.
-    connectSignalToDriverInState(interationFinish, ONE,
+    connectSignalToDriverInState(iterationFinish, ONE,
                                  (--fsm->end())->getPrevNode());
-    interationFinish->addCondition(
-        rtl->addOp(RTLOp::Not)->setOperands(interationFinish->getCondition(0)),
+    iterationFinish->addCondition(
+        rtl->addOp(RTLOp::Not)->setOperands(iterationFinish->getCondition(0)),
         ZERO);
 }
 
@@ -6506,14 +6515,30 @@ RTLModule* GenerateRTL::generateRTL(MinimizeBitwidth *_MBW) {
 
 	generateDatapath();
 	updateRTLWithPatterns();
-	shareRegistersFromBinding();
-	delete Patterns;
-	Patterns = NULL;
+    shareRegistersFromBinding();
+    delete Patterns;
+    Patterns = NULL;
+    if (LEGUP_CONFIG->getParameterInt("ASIC_IMPLEMENTATION") &&
+        rtl->getName() == "main") {
+        connectCustomOutputsToRTLSignals();
+    }
+    if (LEGUP_CONFIG->getParameterInt("ASIC_IMPLEMENTATION") &&
+        rtl->getName() == "main") {
+        rtl->removeRamSignals(getRemovedRams());
+        // Need to also remove signals from other modules
+        // TODO:figure out why memory signals for rams in man are added to
+        // functions called from main.
+        for (Allocation::const_rtl_iterator i = alloc->rtl_begin(),
+                                            e = alloc->rtl_end();
+             i != e; ++i) {
+            RTLModule *mod = *i;
+            mod->removeRamSignals(getRemovedRams());
+        }
+    }
+    printSchedulingInfo();
 
-	printSchedulingInfo();
-
-	// Delete/clear multi-cycle files from previous builds
-	delete_multicycle_files();
+    // Delete/clear multi-cycle files from previous builds
+    delete_multicycle_files();
 	printSDCMultiCycleConstraints();
 
 	printScheduleGanttChart();
@@ -6576,10 +6601,6 @@ RTLModule* GenerateRTL::generateRTL(MinimizeBitwidth *_MBW) {
             assert(rtl->localRamList.find(r) == rtl->localRamList.end());
             rtl->localRamList.insert(r);
         }
-    }
-    if (LEGUP_CONFIG->getParameterInt("ASIC_IMPLEMENTATION") &&
-        rtl->getName() == "main") {
-        connectCustomOutputsToRTLSignals();
     }
     return rtl;
 }
@@ -7287,10 +7308,19 @@ DebugVariableLocal *GenerateRTL::dbgGetVariable(MDNode *metaNode) {
     return v;
 }
 
+void GenerateRTL::addRemovedRam(std::string ramName) {
+    if (std::find(removedRams.begin(), removedRams.end(), ramName) ==
+        removedRams.end()) {
+        removedRams.push_back(ramName);
+    }
+}
+
+std::vector<std::string> GenerateRTL::getRemovedRams() { return removedRams; }
+
 GenerateRTL::~GenerateRTL() {
     assert(sched);
-	assert(sched->getFSM(Fp));
-	delete sched->getFSM(Fp);
+    assert(sched->getFSM(Fp));
+    delete sched->getFSM(Fp);
 	delete sched;
 	assert(rtl);
 	delete rtl;

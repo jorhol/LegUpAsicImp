@@ -45,7 +45,6 @@ int main(int argc, char *argv[]) {
                 size_t found = 0;
                 do {
                     found = line.find(whitespace, found + 1);
-                    ;
                 } while (line.compare(found + 1, 1, "@") != 0);
                 if (line.compare(found + 1, 6, "@main(") == 0) {
                     inMain = true;
@@ -116,7 +115,6 @@ int main(int argc, char *argv[]) {
                     sources[i].find("__out_") == 0) {
                     done.insert(sources[j]);
                     string sigName = sources[i];
-                    // cout << "sigName = " << sigName << "\n";
                     // Only print parameters defined as outputs
                     if (sigName.find("__out_") == 0) {
                         sigName = sigName.substr(6, std::string::npos);

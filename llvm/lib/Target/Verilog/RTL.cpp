@@ -456,6 +456,34 @@ RTLSignal *RTLModule::addOutReg(std::string name, RTLWidth width) {
     return out;
 }
 
+void RTLModule::removeRamSignals(std::vector<std::string> removedRams) {
+    std::string arr[] = {"_address_a", "_write_enable_a", "_in_a", "_out_a",
+                         "_address_b", "_write_enable_b", "_in_b", "_out_b"};
+    std::vector<int> TestVector;
+    std::vector<std::string> sigName(arr, arr + 8);
+    for (std::vector<std::string>::const_iterator it = removedRams.begin();
+         it != removedRams.end(); ++it) {
+        for (std::vector<std::string>::const_iterator iter = sigName.begin();
+             iter != sigName.end(); ++iter) {
+            std::string signalName = *it + *iter;
+            RTLSignal *sig = find(signalName);
+            if (sig->getType() == "reg" || sig->getType() == "wire") {
+                for (unsigned i = 0; i < signals.size(); ++i) {
+                    if (signals[i] == sig) {
+                        signals.erase(signals.begin() + i);
+                    }
+                }
+            } else {
+                for (unsigned i = 0; i < ports.size(); ++i) {
+                    if (ports[i] == sig) {
+                        ports.erase(ports.begin() + i);
+                    }
+                }
+            }
+        }
+    }
+}
+
 RTLModule *RTLModule::addModule(std::string name, std::string instName) {
     RTLModule *mod = new RTLModule(name, instName);
     instances.push_back(mod);
