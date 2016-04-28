@@ -3,9 +3,9 @@
 #include <time.h>
 #include <stdbool.h>
 
-int doCal(int inDataV, int testVar, int sel) {
+int doCal(int inDataV, int testVar, bool sel) {
     int temp;
-    if (sel < 1) {
+    if (sel == false) {
         temp = testVar + 3 * inDataV;
         return temp;
     } else {
@@ -16,23 +16,26 @@ int doCal(int inDataV, int testVar, int sel) {
 
 int doCal2(int inDataV, int testVar) { return 3 * testVar + 3 * inDataV; }
 
-char main(int done, int inDataA, int inDataB, volatile int __out_outData,
+void main(_Bool done, int inDataA, int inDataB, volatile int __out_outData,
           volatile int __out_test) {
-    //__out_outData = 0;
-    //__out_test = 0;
-    int sel = 1;
-    while (done != 1) {
-        if (sel == 1) {
-            __out_outData = doCal(inDataA, inDataB, 0);
+
+    bool sel = true;
+    while (done != true) {
+        if (sel == true) {
+            int temp;
+            temp = doCal(inDataA, inDataB, false);
+            __out_outData = temp;
             __out_test = 2 * inDataA * 2 * inDataB;
-            __out_test = doCal(inDataA, __out_outData, 1);
-            sel = 0;
+            __out_test = doCal(inDataA, temp, true);
+            sel = false;
         } else {
-            __out_outData = doCal2(inDataA, inDataB);
+            int temp;
+            temp = doCal2(inDataA, inDataB);
+            __out_outData = temp;
             __out_test = inDataA * inDataB;
-            __out_test = doCal2(inDataA, __out_outData);
-            sel = 1;
+            __out_test = doCal2(temp, inDataA);
+            sel = true;
         }
     }
-    return (char)inDataA;
+    return;
 }
