@@ -55,6 +55,9 @@ int main(int argc, char *argv[]) {
         bool isMakefile = false;
         string value = record.back();
         record.pop_back();
+        if (value == "discard") {
+            continue;
+        }
         if (value == "makefile") {
             isMakefile = true;
             value = record.back();
@@ -101,7 +104,7 @@ int main(int argc, char *argv[]) {
     char buffer[100];
     int n = sprintf(buffer, "%d", (int)pow(2, randomConstraints.size()));
     for (int count = 0; count < pow(2, randomConstraints.size()); count++) {
-        sprintf(buffer, "%.*d", n, count);
+        sprintf(buffer, "%d", count); // sprintf(buffer, "%.*d", n, count);
         string cFileName = "config" + string(buffer) + ".tcl";
         string fileLocation = "./constraintfiles/" + cFileName;
         constraintFile.open(fileLocation.c_str());
@@ -160,5 +163,5 @@ int main(int argc, char *argv[]) {
                  << "include $(LEVEL)/Makefile.common\n";
         makeFile.close();
     }
-    return randomConstraints.size();
+    return (int)pow(2, randomConstraints.size());
 }
