@@ -5862,9 +5862,9 @@ void GenerateRTL::generateModuleDeclaration() {
     // add parameters for tag offset
     // which is used if there are multiple instances of a RAM
     // for pthreads/openmp
-    if (usesPthreads || Fp->hasFnAttribute("totalNumThreads")) {
-        addTagOffsetParameterToModule();
-    }
+    // if (usesPthreads || Fp->hasFnAttribute("totalNumThreads")) {
+    addTagOffsetParameterToModule();
+    //}
 
     addDefaultPortsToModule(rtl);
 
@@ -6058,15 +6058,16 @@ void GenerateRTL::connectCustomOutputsToRTLSignals() {
                 validSig->addCondition(notValid, ZERO);
             }
         }
-
-        string ramName = "main_" + storeLabels[i] + "_" + storeVariables[i];
-        for (Allocation::const_ram_iterator i = alloc->ram_begin(),
-                                            e = alloc->ram_end();
-             i != e; ++i) {
-            RAM *R = *i;
-            if (R->getName() == ramName) {
-                addRemovedRam(ramName);
-                alloc->removeRam(R);
+        if (LEGUP_CONFIG->getParameterInt("REMOVE_UNUSED_LOCAL_RAMS")) {
+            string ramName = "main_" + storeLabels[i] + "_" + storeVariables[i];
+            for (Allocation::const_ram_iterator i = alloc->ram_begin(),
+                                                e = alloc->ram_end();
+                 i != e; ++i) {
+                RAM *R = *i;
+                if (R->getName() == ramName) {
+                    addRemovedRam(ramName);
+                    alloc->removeRam(R);
+                }
             }
         }
     }
